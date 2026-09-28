@@ -672,7 +672,7 @@ if('serviceWorker' in navigator){
 <header>
   <div id="blocTitreCiris" style="display:flex;flex-direction:column;justify-content:center;height:100%;">
   <div style="line-height:1;">
-    <span id="titrePrincipal" style="font-family:'Ethnocentric', 'Orbitron', 'Arial Black', Arial, sans-serif; font-size:22px; font-weight:900; letter-spacing:0.5px; color:#16324f; white-space:nowrap;">CIR<span style="color:#2f7fd1;">i</span>S version 2.07</span>
+    <span id="titrePrincipal" style="font-family:'Ethnocentric', 'Orbitron', 'Arial Black', Arial, sans-serif; font-size:22px; font-weight:900; letter-spacing:0.5px; color:#16324f; white-space:nowrap;">CIR<span style="color:#2f7fd1;">i</span>S version 2.08</span>
   </div>
   <div style="font-size:10px;letter-spacing:1.5px;color:#3a2f28;margin:3px 0 1px 2px;font-weight:bold;">Site créé par CALIMOUTOU Brice</div>
   </div>
@@ -709,7 +709,7 @@ if('serviceWorker' in navigator){
   <button id="ongletBtn-courriers" class="onglet-item" onclick="afficherOnglet('courriers')">Courriers</button>
   <button id="ongletBtn-documents" class="onglet-item" onclick="afficherOnglet('documents')">Documents</button>
   <button id="ongletBtn-parametres" class="onglet-item" onclick="afficherOnglet('parametres')">Paramètres</button>
-  <button class="onglet-item" onclick="exporterToutesDonnees()" title="Sauvegarder toutes les données (export rapide)" style="background:transparent;">💾 Sauvegarder</button>
+  <button id="ongletBtn-sauvegarde" class="onglet-item" onclick="exporterToutesDonnees()" title="Sauvegarder toutes les données (export rapide)" style="background:transparent;">💾 Sauvegarder</button>
   <span style="margin-left:auto;display:flex;align-items:center;gap:4px;">
     <button id="btnAnnuler" onclick="annulerAction()" style="background:transparent;color:#cfe0f2;" title="Annuler la dernière modification">↶ Annuler</button>
     <button id="btnRetablir" onclick="retablirAction()" style="background:transparent;color:#cfe0f2;" title="Rétablir">↷ Rétablir</button>
@@ -1716,7 +1716,7 @@ function chargerProfil(){
    Deux profils possibles : le RC lui-même, et sa femme. Choisir la femme masque les onglets qui ne la
    concernent pas (Calendrier, Programme du cycle, Analyse) — elle ne voit que ce dont elle a besoin pour
    remplir son propre programme de la semaine. */
-const ONGLETS_MASQUES_EPOUSE = ['calendrier','cycle','analyse','courriers','documents'];
+const ONGLETS_MASQUES_EPOUSE = ['calendrier','cycle','analyse','courriers','documents','parametres','sauvegarde'];
 function initiales(nom, prenom){
   const i1 = (prenom||'').trim().charAt(0);
   const i2 = (nom||'').trim().charAt(0);
@@ -1754,7 +1754,7 @@ function appliquerProfilActif(){
 
   // visibilité des onglets selon le profil actif
   const masques = actif === 'epouse' ? ONGLETS_MASQUES_EPOUSE : [];
-  const tousLesOnglets = ['calendrier','semaine','cycle','proclamateurs','analyse','parametres'];
+  const tousLesOnglets = ['calendrier','semaine','cycle','proclamateurs','analyse','courriers','documents','parametres','sauvegarde'];
   tousLesOnglets.forEach(o=>{
     const btn = document.getElementById('ongletBtn-'+o);
     if(btn) btn.style.display = masques.includes(o) ? 'none' : '';
