@@ -248,38 +248,222 @@ if('serviceWorker' in navigator){
     /* pastilles de couleur (fenêtre de sélection) plus faciles à toucher précisément */
     .mini-calendrier-popup button[style*="width:22px"]{width:30px !important; height:30px !important;}
   }
+  #panneauAcces{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;}
+  #panneauAcces.ouvert{display:flex;}
+  #panneauAccesCarte{background:#fff;border-radius:10px;padding:20px;width:92%;max-width:520px;max-height:82vh;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,.25);}
+  .ligne-acces{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bord, #ddd0ba);}
+  .ligne-acces:last-child{border-bottom:none;}
+  .puce-statut{font-size:11px;font-weight:bold;padding:2px 8px;border-radius:10px;display:inline-block;}
 </style>
 </head>
-<!-- Mot de passe désactivé pour l'instant (usage personnel). Pour le réactiver : remettre class="verrouille" sur <body> ci-dessous. -->
-<body>
+<body class="verrouille">
 <div id="ecranVerrou" style="display:none;position:fixed;inset:0;z-index:9999;background:#f5efe4;align-items:center;justify-content:center;font-family:Arial, Helvetica, sans-serif;">
-  <div style="background:#fff;border:1px solid #ddd0ba;border-radius:10px;padding:32px 28px;max-width:320px;width:90%;text-align:center;box-shadow:0 4px 18px rgba(0,0,0,0.08);">
+  <div id="zoneEcranAuth" style="background:#fff;border:1px solid #ddd0ba;border-radius:10px;padding:32px 28px;max-width:320px;width:90%;text-align:center;box-shadow:0 4px 18px rgba(0,0,0,0.08);">
     <div style="font-family:'Orbitron','Arial Black',Arial,sans-serif;font-size:26px;font-weight:900;letter-spacing:1px;color:#16324f;margin-bottom:4px;">CIR<span style="color:#2f7fd1;">i</span>S</div>
-    <div style="font-size:13px;color:#777;margin-bottom:18px;">Accès protégé — entre le mot de passe</div>
-    <form onsubmit="tenterDeverrouillage(); return false;">
-      <input type="password" id="champMotDePasse" placeholder="Mot de passe" style="width:100%;padding:9px 10px;border:1px solid #ddd0ba;border-radius:5px;font-size:14px;box-sizing:border-box;margin-bottom:10px;">
-      <button type="submit" style="width:100%;background:#8a5a3d;color:#fff;border:none;border-radius:5px;padding:10px;font-size:14px;font-weight:bold;cursor:pointer;">Entrer</button>
-    </form>
-    <div id="erreurMotDePasse" style="display:none;color:#b3261e;font-size:12.5px;margin-top:10px;">Mot de passe incorrect.</div>
+    <div style="font-size:13px;color:#777;margin:14px 0;">Chargement…</div>
   </div>
 </div>
+<div id="panneauAcces">
+  <div id="panneauAccesCarte">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;font-size:15px;color:var(--bleu,#16324f);">🔐 Gestion des accès</h3>
+      <button type="button" class="btn-secondaire" onclick="document.getElementById('panneauAcces').classList.remove('ouvert')">Fermer</button>
+    </div>
+    <div id="contenuPanneauAcces" style="font-size:13px;color:#777;">Chargement…</div>
+  </div>
+</div>
+<!-- bibliothèque cliente Supabase (authentification Google + synchronisation) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+/* =================================================================
+   Authentification Google (Supabase Auth) + validation manuelle des
+   accès par l'administrateur (Brice). Tant que le compte connecté
+   n'est pas approuvé, l'appli reste masquée derrière #ecranVerrou
+   (classe "verrouille" sur <body>, déjà utilisée auparavant pour le
+   mot de passe).
+   ================================================================= */
 (function(){
-  const MOT_DE_PASSE_ACCES = 'EER-68';
-  window.tenterDeverrouillage = function(){
-    const champ = document.getElementById('champMotDePasse');
-    if(champ.value === MOT_DE_PASSE_ACCES){
-      localStorage.setItem('rc_deverrouille','oui');
-      document.body.classList.remove('verrouille');
-    } else {
-      document.getElementById('erreurMotDePasse').style.display='block';
-      champ.value='';
-      champ.focus();
-    }
-  };
-  if(localStorage.getItem('rc_deverrouille') === 'oui'){
-    document.body.classList.remove('verrouille');
+  const SUPABASE_URL = 'https://rvxyhoozhjjkpzimducn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_gtHjtOru4UCquOH2ETAdLg_RbX4x9tr';
+  const ADMIN_EMAIL = 'brice.calimoutou@gmail.com';
+
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  window.cirisSupabase = client;
+  const zone = document.getElementById('zoneEcranAuth');
+
+  function verrouiller(){ document.body.classList.add('verrouille'); }
+  function deverrouiller(){ document.body.classList.remove('verrouille'); }
+
+  function enteteLogo(){
+    return `<div style="font-family:'Orbitron','Arial Black',Arial,sans-serif;font-size:26px;font-weight:900;letter-spacing:1px;color:#16324f;margin-bottom:4px;">CIR<span style="color:#2f7fd1;">i</span>S</div>`;
   }
+
+  function ecranConnexion(){
+    zone.innerHTML = enteteLogo() + `
+      <div style="font-size:13px;color:#777;margin-bottom:20px;">Connecte-toi pour accéder à l'outil</div>
+      <button type="button" onclick="window.cirisConnexionGoogle()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:#fff;color:#333;border:1px solid #ddd0ba;border-radius:5px;padding:10px;font-size:14px;font-weight:bold;cursor:pointer;">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.84 2.09-1.8 2.73v2.27h2.91c1.7-1.57 2.69-3.87 2.69-6.64z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.27c-.81.54-1.84.86-3.05.86-2.34 0-4.33-1.58-5.04-3.71H.96v2.34C2.44 15.98 5.48 18 9 18z"/><path fill="#FBBC05" d="M3.96 10.7c-.18-.54-.28-1.11-.28-1.7s.1-1.16.28-1.7V4.96H.96C.35 6.17 0 7.55 0 9s.35 2.83.96 4.04l3-2.34z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.96l3 2.34C4.67 5.16 6.66 3.58 9 3.58z"/></svg>
+        Se connecter avec Google
+      </button>`;
+    verrouiller();
+  }
+
+  function ecranAttente(email){
+    zone.innerHTML = enteteLogo() + `
+      <div style="font-size:14px;color:#555;margin:10px 0 6px;font-weight:bold;">⏳ Demande envoyée</div>
+      <div style="font-size:13px;color:#777;margin-bottom:18px;">Le compte <strong>${email}</strong> est en attente de validation par l'administrateur.</div>
+      <button type="button" onclick="window.cirisDeconnexion()" style="width:100%;background:#fff;color:#16324f;border:1px solid #ddd0ba;border-radius:5px;padding:9px;font-size:13px;cursor:pointer;">Se déconnecter</button>`;
+    verrouiller();
+  }
+
+  function ecranRefuse(email){
+    zone.innerHTML = enteteLogo() + `
+      <div style="font-size:14px;color:#b3261e;margin:10px 0 6px;font-weight:bold;">Accès refusé</div>
+      <div style="font-size:13px;color:#777;margin-bottom:18px;">Le compte <strong>${email}</strong> n'a pas été autorisé à accéder à cet outil.</div>
+      <button type="button" onclick="window.cirisDeconnexion()" style="width:100%;background:#fff;color:#16324f;border:1px solid #ddd0ba;border-radius:5px;padding:9px;font-size:13px;cursor:pointer;">Se déconnecter</button>`;
+    verrouiller();
+  }
+
+  function ecranErreur(){
+    zone.innerHTML = enteteLogo() + `
+      <div style="font-size:13px;color:#b3261e;margin-bottom:18px;">Impossible de vérifier ton accès pour le moment (connexion internet nécessaire au premier lancement). Réessaie dans un instant.</div>
+      <button type="button" onclick="location.reload()" style="width:100%;background:#fff;color:#16324f;border:1px solid #ddd0ba;border-radius:5px;padding:9px;font-size:13px;cursor:pointer;">Réessayer</button>`;
+    verrouiller();
+  }
+
+  window.cirisConnexionGoogle = function(){
+    client.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + window.location.pathname }
+    });
+  };
+  window.cirisDeconnexion = function(){
+    client.auth.signOut().then(()=>{
+      window.cirisUtilisateurCourant = null;
+      localStorage.removeItem('_cirisDernierAccesApprouve');
+      location.reload();
+    });
+  };
+
+  function majBadgeCompte(){
+    // Remarque : #nomCompteBandeau / #roleCompteBandeau / #avatarCompte servent déjà
+    // au sélecteur de profil local de l'appli (RC / Épouse) — on n'y touche pas.
+    // Le compte Google connecté est simplement ajouté en pied du menu déroulant.
+    const u = window.cirisUtilisateurCourant;
+    if(!u || !u.profil) return;
+    const menu = document.getElementById('menuCompte');
+    if(menu && !document.getElementById('piedCompteGoogle')){
+      const pied = document.createElement('div');
+      pied.id = 'piedCompteGoogle';
+      pied.style.borderTop = '1px solid var(--bord, #ddd0ba)';
+      pied.style.marginTop = '8px';
+      pied.style.paddingTop = '8px';
+      pied.style.fontSize = '11px';
+      pied.style.color = '#888';
+      pied.innerHTML = `Connecté (Google) : <strong>${u.session.user.email}</strong><br>
+        <span style="cursor:pointer;color:var(--bleu,#16324f);" onclick="window.cirisDeconnexion()">Se déconnecter</span>`;
+      menu.appendChild(pied);
+    }
+    // bouton d'administration des accès, ajouté une seule fois si l'utilisateur est admin
+    if(u.estAdmin && !document.getElementById('boutonPanneauAcces')){
+      const bouton = document.createElement('button');
+      bouton.id = 'boutonPanneauAcces';
+      bouton.type = 'button';
+      bouton.className = 'btn-secondaire no-print';
+      bouton.style.marginLeft = '10px';
+      bouton.style.whiteSpace = 'nowrap';
+      bouton.style.order = '2';
+      bouton.textContent = '🔐 Accès';
+      bouton.onclick = function(e){ e.stopPropagation(); window.ouvrirPanneauAcces(); };
+      const widget = document.getElementById('widgetCompte');
+      if(widget && widget.parentNode) widget.parentNode.insertBefore(bouton, widget);
+    }
+  }
+  window.cirisMajWidgetCompteGoogle = majBadgeCompte;
+
+  async function verifierAcces(session){
+    if(!session){ ecranConnexion(); return; }
+    const email = session.user.email;
+    try {
+      let { data: profil, error } = await client.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+      if(!profil && !error){
+        // tout premier instant après l'inscription : le déclencheur serveur qui crée
+        // la ligne peut prendre une fraction de seconde, on retente une fois
+        await new Promise(r=>setTimeout(r,1200));
+        ({ data: profil, error } = await client.from('profiles').select('*').eq('id', session.user.id).maybeSingle());
+      }
+      if(error) throw error;
+      window.cirisUtilisateurCourant = { session, profil, estAdmin: email === ADMIN_EMAIL };
+      if(profil && profil.status === 'approved'){
+        localStorage.setItem('_cirisDernierAccesApprouve', 'oui');
+        deverrouiller();
+        majBadgeCompte();
+        window.cirisSynchroniser && window.cirisSynchroniser();
+      } else if(profil && profil.status === 'rejected'){
+        ecranRefuse(email);
+      } else {
+        ecranAttente(email);
+      }
+    } catch(e){
+      // hors ligne (ou serveur injoignable) : si ce compte avait déjà été approuvé
+      // lors d'une précédente connexion, on laisse l'appli s'ouvrir avec les
+      // données locales plutôt que de bloquer l'accès faute de réseau — cohérent
+      // avec le fonctionnement hors-ligne de l'appli (PWA)
+      if(localStorage.getItem('_cirisDernierAccesApprouve') === 'oui'){
+        window.cirisUtilisateurCourant = { session, profil: {status:'approved'}, estAdmin: email === ADMIN_EMAIL, horsLigne: true };
+        deverrouiller();
+      } else {
+        ecranErreur();
+      }
+    }
+  }
+
+  client.auth.getSession().then(({data})=>verifierAcces(data.session));
+  client.auth.onAuthStateChange((_evenement, session)=>verifierAcces(session));
+  // filet de sécurité : au tout premier chargement, verifierAcces() peut se résoudre
+  // avant que l'en-tête (widgetCompte/menuCompte, plus bas dans le HTML) n'existe
+  // encore dans le DOM ; on réapplique le badge une fois la page entièrement chargée
+  window.addEventListener('load', ()=>{ majBadgeCompte(); });
+
+  // ---------------- Panneau d'administration des accès ----------------
+  window.ouvrirPanneauAcces = async function(){
+    document.getElementById('panneauAcces').classList.add('ouvert');
+    const zoneContenu = document.getElementById('contenuPanneauAcces');
+    zoneContenu.innerHTML = 'Chargement…';
+    const { data: profils, error } = await client.from('profiles').select('*').order('requested_at', {ascending:false});
+    if(error){ zoneContenu.innerHTML = 'Erreur de chargement.'; return; }
+    if(!profils.length){ zoneContenu.innerHTML = 'Aucune demande pour le moment.'; return; }
+    const couleurs = { pending:'#8a6d00', approved:'#2e7d32', rejected:'#b3261e' };
+    const fonds = { pending:'#fff3b0', approved:'#dcefdc', rejected:'#f8d7d7' };
+    const libelles = { pending:'En attente', approved:'Approuvé', rejected:'Refusé' };
+    zoneContenu.innerHTML = profils.map(p=>`
+      <div class="ligne-acces">
+        <div>
+          <div style="font-weight:bold;">${(p.full_name||p.email)}</div>
+          <div style="font-size:11px;color:#999;">${p.email}</div>
+          <span class="puce-statut" style="color:${couleurs[p.status]};background:${fonds[p.status]};">${libelles[p.status]}</span>
+        </div>
+        <div style="display:flex;gap:6px;">
+          ${p.status!=='approved' ? `<button type="button" class="btn-principal" style="padding:5px 10px;font-size:12px;" onclick="window.definirStatutAcces('${p.id}','approved')">✓ Approuver</button>` : ''}
+          ${p.status!=='rejected' ? `<button type="button" class="btn-danger" style="padding:5px 10px;font-size:12px;" onclick="window.definirStatutAcces('${p.id}','rejected')">✕ Refuser</button>` : ''}
+        </div>
+      </div>`).join('');
+  };
+  window.definirStatutAcces = async function(idProfil, statut){
+    const u = window.cirisUtilisateurCourant;
+    await client.from('profiles').update({
+      status: statut,
+      decided_at: new Date().toISOString(),
+      decided_by: u ? u.session.user.email : null
+    }).eq('id', idProfil);
+    window.ouvrirPanneauAcces();
+  };
+
+  // ---------------- Synchronisation des données (voir bloc suivant) ----------------
+  window.cirisEstApprouve = function(){
+    const u = window.cirisUtilisateurCourant;
+    return !!(u && u.profil && u.profil.status === 'approved');
+  };
 })();
 </script>
 <script>
@@ -376,11 +560,119 @@ if('serviceWorker' in navigator){
   if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
 })();
 </script>
+<script>
+/* =================================================================
+   Synchronisation Supabase (par-dessus le miroir IndexedDB ci-dessus)
+   -----------------------------------------------------------------
+   - à chaque écriture d'une clé "rc_..." dans localStorage, elle est
+     répercutée (avec un léger délai anti-rafale) vers la table
+     ciris_data de Supabase, si le compte connecté est approuvé ;
+   - au premier chargement après connexion, les données de Supabase
+     sont récupérées et fusionnées dans localStorage (seules les clés
+     plus récentes côté serveur écrasent la version locale), puis les
+     clés locales encore inconnues du serveur y sont envoyées.
+   Tout ceci reste silencieux si hors-ligne : l'appli continue de
+   fonctionner avec les données locales, et se resynchronisera au
+   prochain lancement avec réseau.
+   ================================================================= */
+(function(){
+  const PREFIXE_SYNC = 'rc_';
+  const CLE_META = '_cirisSyncMeta';
+  const minuteurs = {};
+
+  function lireMeta(){
+    try { return JSON.parse(localStorage.getItem(CLE_META) || '{}'); } catch(e){ return {}; }
+  }
+  function ecrireMeta(meta){
+    try { window.__setItemOriginalCiris ? window.__setItemOriginalCiris.call(localStorage, CLE_META, JSON.stringify(meta)) : localStorage.setItem(CLE_META, JSON.stringify(meta)); } catch(e){}
+  }
+
+  async function pousserCle(cle){
+    if(!window.cirisEstApprouve || !window.cirisEstApprouve()) return;
+    const client = window.cirisSupabase;
+    const u = window.cirisUtilisateurCourant;
+    if(!client || !u) return;
+    try{
+      const valeur = localStorage.getItem(cle);
+      const maintenant = new Date().toISOString();
+      if(valeur === null){
+        await client.from('ciris_data').delete().eq('cle', cle);
+      } else {
+        await client.from('ciris_data').upsert({ cle, valeur, maj_le: maintenant, maj_par: u.session.user.id });
+      }
+      const meta = lireMeta();
+      meta[cle] = maintenant;
+      ecrireMeta(meta);
+    } catch(e){ /* hors-ligne ou erreur réseau : on retentera à la prochaine écriture */ }
+  }
+
+  function planifierPush(cle){
+    clearTimeout(minuteurs[cle]);
+    minuteurs[cle] = setTimeout(()=>pousserCle(cle), 800);
+  }
+
+  // on enveloppe une nouvelle fois setItem/removeItem (déjà enveloppés
+  // pour IndexedDB ci-dessus) pour y ajouter la synchro Supabase
+  const _setItemAvecSync = Storage.prototype.setItem;
+  const _removeItemAvecSync = Storage.prototype.removeItem;
+  window.__setItemOriginalCiris = _setItemAvecSync;
+  Storage.prototype.setItem = function(cle, valeur){
+    _setItemAvecSync.call(this, cle, valeur);
+    if(this === window.localStorage && cle.indexOf(PREFIXE_SYNC) === 0 && cle !== CLE_META) planifierPush(cle);
+  };
+  Storage.prototype.removeItem = function(cle){
+    _removeItemAvecSync.call(this, cle);
+    if(this === window.localStorage && cle.indexOf(PREFIXE_SYNC) === 0) planifierPush(cle);
+  };
+
+  window.cirisSynchroniser = async function(){
+    if(sessionStorage.getItem('_cirisSyncFaite') === 'oui') return;
+    const client = window.cirisSupabase;
+    if(!client) return;
+    try{
+      const { data: lignes, error } = await client.from('ciris_data').select('cle,valeur,maj_le');
+      if(error || !lignes) return;
+      const meta = lireMeta();
+      let modifie = false;
+      const clesDistantes = new Set();
+      lignes.forEach(ligne=>{
+        clesDistantes.add(ligne.cle);
+        const connuLocalement = meta[ligne.cle];
+        if(!connuLocalement || new Date(ligne.maj_le) > new Date(connuLocalement)){
+          const valeurTexte = typeof ligne.valeur === 'string' ? ligne.valeur : JSON.stringify(ligne.valeur);
+          if(localStorage.getItem(ligne.cle) !== valeurTexte){
+            _setItemAvecSync.call(localStorage, ligne.cle, valeurTexte);
+            modifie = true;
+          }
+          meta[ligne.cle] = ligne.maj_le;
+        }
+      });
+      ecrireMeta(meta);
+      // envoie au serveur les clés locales que le serveur ne connaît pas encore
+      // (première synchro d'un appareil qui avait déjà des données locales)
+      for(let i=0;i<localStorage.length;i++){
+        const cle = localStorage.key(i);
+        if(cle.indexOf(PREFIXE_SYNC) === 0 && cle !== CLE_META && !clesDistantes.has(cle)) planifierPush(cle);
+      }
+      sessionStorage.setItem('_cirisSyncFaite','oui');
+      if(modifie) location.reload();
+    } catch(e){ /* pas de réseau au démarrage : l'appli continue avec les données locales */ }
+  };
+
+  // filet de sécurité : si le compte était déjà approuvé au tout premier chargement,
+  // verifierAcces() (script précédent) a pu s'exécuter avant que ce bloc-ci ne soit
+  // encore chargé ; on retente une fois la page entièrement chargée (l'appel ne fait
+  // rien s'il a déjà eu lieu, grâce à sessionStorage._cirisSyncFaite)
+  window.addEventListener('load', ()=>{
+    if(window.cirisEstApprouve && window.cirisEstApprouve()) window.cirisSynchroniser();
+  });
+})();
+</script>
 <div id="barreHaute" style="position:sticky;top:0;z-index:500;">
 <header>
   <div id="blocTitreCiris" style="display:flex;flex-direction:column;justify-content:center;height:100%;">
   <div style="line-height:1;">
-    <span id="titrePrincipal" style="font-family:'Ethnocentric', 'Orbitron', 'Arial Black', Arial, sans-serif; font-size:22px; font-weight:900; letter-spacing:0.5px; color:#16324f; white-space:nowrap;">CIR<span style="color:#2f7fd1;">i</span>S version 2.06</span>
+    <span id="titrePrincipal" style="font-family:'Ethnocentric', 'Orbitron', 'Arial Black', Arial, sans-serif; font-size:22px; font-weight:900; letter-spacing:0.5px; color:#16324f; white-space:nowrap;">CIR<span style="color:#2f7fd1;">i</span>S version 2.07</span>
   </div>
   <div style="font-size:10px;letter-spacing:1.5px;color:#3a2f28;margin:3px 0 1px 2px;font-weight:bold;">Site créé par CALIMOUTOU Brice</div>
   </div>
