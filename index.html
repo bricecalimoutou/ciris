@@ -102,7 +102,7 @@ if('serviceWorker' in navigator){
   .btn-danger{background:#fff; color:#b3261e; border:1px solid #b3261e;}
   table{width:100%; border-collapse:collapse; margin-top:8px;}
   .reunion-bloc table{table-layout:fixed;}
-  .reunion-bloc table th:nth-child(1), .reunion-bloc table td:nth-child(1){width:70px;}
+  .reunion-bloc table th:nth-child(1), .reunion-bloc table td:nth-child(1){width:98px;}
   .reunion-bloc table th:nth-child(2), .reunion-bloc table td:nth-child(2){width:38%;}
   .reunion-bloc table th:nth-child(3), .reunion-bloc table td:nth-child(3){width:38%; overflow-wrap:break-word;}
   .reunion-bloc table th:nth-child(4), .reunion-bloc table td:nth-child(4){width:36px;}
@@ -116,10 +116,10 @@ if('serviceWorker' in navigator){
   .champ-lecture-cycle{border:none !important; background:transparent !important; box-shadow:none !important; padding:2px 0 !important; cursor:default !important; pointer-events:none;}
   .champ-lecture-cycle:focus{background:transparent !important; outline:none !important;}
   .heure{width:70px; font-variant-numeric:tabular-nums; color:#555; font-size:13px;}
-  .heure-min{min-width:120px; text-align:center; display:flex; align-items:center; justify-content:center; gap:3px; white-space:nowrap;}
+  .heure-min{min-width:0; width:100%; text-align:center; display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:2px; white-space:normal; overflow:visible;}
   .heure-min .ch-heure{flex-shrink:0;}
-  .heure-min .ch-heure{font-size:13px; font-weight:bold; color:#555;}
-  .heure-min input.ch-min{width:36px !important; font-size:13px; text-align:center; padding:3px 1px;}
+  .heure-min .ch-heure{font-size:12px; font-weight:bold; color:#555;}
+  .heure-min input.ch-min{width:30px !important; font-size:12px; text-align:center; padding:3px 1px;}
   .ch-heure{font-variant-numeric:tabular-nums; font-size:13px; color:#555;}
   .titre-section{background:#ecdcc4 !important; font-weight:bold; text-transform:uppercase; font-size:11px; color:var(--bleu);}
   .ligne-actions{width:34px; text-align:center;}
@@ -228,12 +228,16 @@ if('serviceWorker' in navigator){
        gardaient un padding très serré même sur mobile à cause d'une règle plus spécifique —
        on l'agrandit ici pour rester confortable au doigt sans casser la mise en page des tableaux */
     td input, td textarea, td select{padding:8px 6px;}
+    /* colonne "durée" du programme de réunion (VCM, Weekend...) : un peu plus étroite sur
+       mobile, avec le contenu (heure + minutes) qui peut passer sur deux lignes plutôt que
+       déborder sur la colonne "Élément du programme" voisine */
+    .reunion-bloc table th:nth-child(1), .reunion-bloc table td:nth-child(1){width:64px;}
+    .heure-min .ch-heure{font-size:11px;}
+    .heure-min input.ch-min{width:26px !important; font-size:11px;}
     /* le tableau du programme de prédication a des colonnes à largeur fixe pensées pour un
        écran large ; sur mobile on les resserre pour limiter le défilement horizontal */
-    #blocPredication table col:nth-child(1){width:56px !important;}
-    #blocPredication table col:nth-child(3){width:60px !important;}
-    #blocPredication table col:nth-child(4){width:82px !important;}
-    #blocPredication table col:nth-child(5){width:110px !important;}
+    #blocPredication table col:nth-child(1){width:52px !important;}
+    #blocPredication table col:nth-child(3){width:56px !important;}
     /* case du mini-calendrier un peu plus grande, plus confortable au doigt */
     .mc-jour{padding:9px 0; font-size:13px;}
     /* la calculatrice flottante ne doit pas déborder sur les très petits écrans */
@@ -376,7 +380,7 @@ if('serviceWorker' in navigator){
 <header>
   <div id="blocTitreCiris" style="display:flex;flex-direction:column;justify-content:center;height:100%;">
   <div style="line-height:1;">
-    <span id="titrePrincipal" style="font-family:'Ethnocentric', 'Orbitron', 'Arial Black', Arial, sans-serif; font-size:22px; font-weight:900; letter-spacing:0.5px; color:#16324f; white-space:nowrap;">CIR<span style="color:#2f7fd1;">i</span>S version 2.05</span>
+    <span id="titrePrincipal" style="font-family:'Ethnocentric', 'Orbitron', 'Arial Black', Arial, sans-serif; font-size:22px; font-weight:900; letter-spacing:0.5px; color:#16324f; white-space:nowrap;">CIR<span style="color:#2f7fd1;">i</span>S version 2.06</span>
   </div>
   <div style="font-size:10px;letter-spacing:1.5px;color:#3a2f28;margin:3px 0 1px 2px;font-weight:bold;">Site créé par CALIMOUTOU Brice</div>
   </div>
@@ -2921,17 +2925,71 @@ function choisirNomPredication(cle, jourId, session, idx, nomChoisi){
   }
   rendrePredication();
 }
+function toggleDetailsPredication(idDetails){
+  const tr = document.getElementById(idDetails);
+  if(!tr) return;
+  tr.classList.toggle('cache');
+}
+function ouvrirChoixTelephone(boutonEl, cle, jourId, session, idx){
+  const conteneur = boutonEl.parentElement;
+  const champTel = conteneur ? conteneur.querySelector('input') : null;
+  const tel = ((champTel ? champTel.value : '') || donneesPredication[cle].jours[jourId][session][idx].tel || '').trim();
+  if(!tel){ alert('Aucun numéro de téléphone renseigné pour ce rendez-vous.'); return; }
+  const telNettoye = tel.replace(/[^\d+]/g,'');
+  document.querySelectorAll('.mini-calendrier-popup').forEach(el=>el.remove());
+  const popup = document.createElement('div');
+  popup.className = 'mini-calendrier-popup';
+  popup.style.width = '200px';
+  document.body.appendChild(popup);
+  popup.innerHTML = `
+    <div style="font-size:13px;font-weight:bold;color:var(--bleu);margin-bottom:8px;text-align:center;">${esc(tel)}</div>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <a class="btn-principal" style="text-align:center;" href="tel:${telNettoye}">📞 Appeler</a>
+      <a class="btn-secondaire" style="text-align:center;" href="https://wa.me/${telNettoye.replace(/^\+/,'')}" target="_blank" rel="noopener">💬 WhatsApp</a>
+    </div>`;
+  positionnerPopup(popup, boutonEl);
+  setTimeout(()=>{
+    document.addEventListener('click', function fermer(e){
+      if(!popup.contains(e.target) && e.target!==boutonEl){ popup.remove(); document.removeEventListener('click', fermer); }
+    });
+  },0);
+}
 function rendreLigneRdv(cle, jourId, session, idx, rdv, supprimable){
   const idHeure = `predHeure-${cle}-${jourId}-${session}-${idx}`;
+  const idDetails = `predDetails-${cle}-${jourId}-${session}-${idx}`;
   return `<tr>
     <td><input type="text" id="${idHeure}" value="${esc(rdv.heure)}" readonly style="cursor:pointer;width:100%;"
       onclick="ouvrirHorlogeChamp(this,'${idHeure}',(v)=>majRdvPredication('${cle}','${jourId}','${session}',${idx},'heure',v))"></td>
     <td><select class="select-personne" onchange="choisirNomPredication('${cle}','${jourId}','${session}',${idx},this.value)">${optionsAssembleeActuelle(rdv.nom)}</select></td>
-    <td><input type="text" value="${esc(rdv.statut)}" style="width:100%;" onchange="majRdvPredication('${cle}','${jourId}','${session}',${idx},'statut',this.value)"></td>
-    <td><input type="text" value="${esc(rdv.tel)}" onchange="majRdvPredication('${cle}','${jourId}','${session}',${idx},'tel',this.value)"></td>
-    <td><select onchange="majRdvPredication('${cle}','${jourId}','${session}',${idx},'activite',this.value)">${optionsActivitePredication(rdv.activite)}</select></td>
-    <td><input type="text" value="${esc(rdv.notes)}" onchange="majRdvPredication('${cle}','${jourId}','${session}',${idx},'notes',this.value)"></td>
-    <td class="ligne-actions">${supprimable ? `<button class="btn-danger" onclick="supprimerRdvPredication('${cle}','${jourId}','${session}',${idx})">✕</button>` : ''}</td>
+    <td class="ligne-actions" style="white-space:nowrap;">
+      <button type="button" class="btn-secondaire" style="padding:4px 7px;font-size:12px;" title="Statut, téléphone, activité, notes" onclick="toggleDetailsPredication('${idDetails}')">ℹ️</button>
+      ${supprimable ? `<button class="btn-danger" onclick="supprimerRdvPredication('${cle}','${jourId}','${session}',${idx})">✕</button>` : ''}
+    </td>
+  </tr>
+  <tr id="${idDetails}" class="cache">
+    <td colspan="3" style="background:#fffdf7;">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="champ" style="flex:1;min-width:110px;margin-bottom:0;">
+          <label>Statut</label>
+          <input type="text" value="${esc(rdv.statut)}" style="width:100%;" onchange="majRdvPredication('${cle}','${jourId}','${session}',${idx},'statut',this.value)">
+        </div>
+        <div class="champ" style="flex:1;min-width:150px;margin-bottom:0;">
+          <label>Téléphone</label>
+          <div style="display:flex;gap:4px;">
+            <input type="text" value="${esc(rdv.tel)}" style="flex:1;" onchange="majRdvPredication('${cle}','${jourId}','${session}',${idx},'tel',this.value)">
+            <button type="button" class="btn-secondaire" style="padding:4px 8px;flex:none;" title="Appeler ou envoyer un message WhatsApp" onclick="ouvrirChoixTelephone(this,'${cle}','${jourId}','${session}',${idx})">📞</button>
+          </div>
+        </div>
+        <div class="champ" style="flex:1;min-width:130px;margin-bottom:0;">
+          <label>Activité</label>
+          <select onchange="majRdvPredication('${cle}','${jourId}','${session}',${idx},'activite',this.value)">${optionsActivitePredication(rdv.activite)}</select>
+        </div>
+        <div class="champ" style="flex:2;min-width:160px;margin-bottom:0;">
+          <label>Notes</label>
+          <input type="text" value="${esc(rdv.notes)}" style="width:100%;" onchange="majRdvPredication('${cle}','${jourId}','${session}',${idx},'notes',this.value)">
+        </div>
+      </div>
+    </td>
   </tr>`;
 }
 function ajouterRdvPredication(cle, jourId, session){
@@ -2989,7 +3047,7 @@ function rendrePersonnePredication(cle, label, couleur, datesJours, blocagesReun
         </div>
       </div>`;
 
-  const colgroupRdv = `<colgroup><col style="width:70px;"><col><col style="width:80px;"><col style="width:110px;"><col style="width:150px;"><col><col style="width:34px;"></colgroup>`;
+  const colgroupRdv = `<colgroup><col style="width:64px;"><col><col style="width:70px;"></colgroup>`;
   JOURS_PREDICATION.forEach((j, idxJour)=>{
     const dateIso = datesJours[idxJour];
     const dateAffichee = dateIso ? capitaliser(formatDateLongue(new Date(dateIso+'T00:00:00'))) : '';
@@ -3011,25 +3069,25 @@ function rendrePersonnePredication(cle, label, couleur, datesJours, blocagesReun
     html += `<div style="margin-top:16px;border:1px solid var(--bord);border-radius:8px;overflow:hidden;background:${teinteJour};">
       <div style="background:${teinteEntete};padding:6px 10px;font-weight:bold;color:#222;">${j.label} — ${dateAffichee}</div>
       ${bandeauMatin}
-      <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:600px;background:transparent;">
+      <div><table style="width:100%;border-collapse:collapse;background:transparent;">
         ${colgroupRdv}
         <thead><tr>
-          <th style="width:70px;">Heure</th><th>Nom</th><th style="width:80px;">Statut</th><th style="width:110px;">Téléphone</th><th style="width:150px;">Activité</th><th>Notes</th><th></th>
+          <th style="width:64px;">Heure</th><th>Nom</th><th style="width:70px;"></th>
         </tr></thead>
         <tbody>`;
     html += matinLibre
-      ? `<tr style="background:${teinteLibre};"><td colspan="7" style="text-align:center;font-weight:bold;padding:10px;">${esc(messageMatin)}</td></tr>`
+      ? `<tr style="background:${teinteLibre};"><td colspan="3" style="text-align:center;font-weight:bold;padding:10px;">${esc(messageMatin)}</td></tr>`
       : jourDonnees.matin.map((rdv,idx)=>rendreLigneRdv(cle,j.id,'matin',idx,rdv,idx>=2)).join('');
     html += `</tbody></table>`;
     if(!matinLibre) html += `<div style="padding:4px 10px 8px;"><button class="btn-secondaire" style="font-size:11px;padding:3px 8px;" onclick="ajouterRdvPredication('${cle}','${j.id}','matin')">+ Ajouter un rendez-vous</button></div>`;
     html += `</div>`;
     html += rendreLigneRepas(cle, j.id, 'midi', jourDonnees.midi, '🍔 Midi', teinteJour);
     html += bandeauApresmidi;
-    html += `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:600px;margin-top:2px;background:transparent;">
+    html += `<div><table style="width:100%;border-collapse:collapse;margin-top:2px;background:transparent;">
         ${colgroupRdv}
         <tbody>`;
     html += apresmidiLibre
-      ? `<tr style="background:${teinteLibre};"><td colspan="7" style="text-align:center;font-weight:bold;padding:10px;">${esc(messageApresmidi)}</td></tr>`
+      ? `<tr style="background:${teinteLibre};"><td colspan="3" style="text-align:center;font-weight:bold;padding:10px;">${esc(messageApresmidi)}</td></tr>`
       : jourDonnees.apresmidi.map((rdv,idx)=>rendreLigneRdv(cle,j.id,'apresmidi',idx,rdv,idx>=2)).join('');
     html += `</tbody></table>`;
     if(!apresmidiLibre) html += `<div style="padding:4px 10px 8px;"><button class="btn-secondaire" style="font-size:11px;padding:3px 8px;" onclick="ajouterRdvPredication('${cle}','${j.id}','apresmidi')">+ Ajouter un rendez-vous</button></div>`;

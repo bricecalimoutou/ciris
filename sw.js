@@ -1,7 +1,7 @@
 // Service worker de CIRiS — permet l'installation comme appli et le
 // fonctionnement hors connexion (les données restent dans le navigateur :
 // ce fichier ne fait que mettre en cache les fichiers de l'appli elle-même).
-const CACHE_NOM = 'ciris-cache-v2.05';
+const CACHE_NOM = 'ciris-cache-v2.06';
 const FICHIERS_A_METTRE_EN_CACHE = [
   './',
   './index.html',
