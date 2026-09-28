@@ -192,7 +192,10 @@ if('serviceWorker' in navigator){
   @media (max-width: 780px){
     .wrap{padding:0 10px 60px;}
     .carte{padding:14px 12px;}
-    header{height:64px; padding:0 12px;}
+    header{height:auto; min-height:64px; padding:8px 12px; flex-wrap:wrap; row-gap:6px;}
+    #blocTitreCiris{order:1; height:auto;}
+    #widgetCompte{order:2;}
+    #boutonSousTitresHeader{order:3; flex-basis:100%; margin-left:0 !important; text-align:center; font-size:12px; padding:7px;}
     #titrePrincipal{font-size:13px !important; letter-spacing:0 !important;}
     nav.onglets{overflow-x:visible; white-space:normal; padding:0; -webkit-overflow-scrolling:touch; flex-wrap:wrap;}
     nav.onglets button{padding:12px 14px; font-size:13px; flex:none;}
@@ -371,14 +374,14 @@ if('serviceWorker' in navigator){
 </script>
 <div id="barreHaute" style="position:sticky;top:0;z-index:500;">
 <header>
-  <div style="display:flex;flex-direction:column;justify-content:center;height:100%;">
+  <div id="blocTitreCiris" style="display:flex;flex-direction:column;justify-content:center;height:100%;">
   <div style="line-height:1;">
-    <span id="titrePrincipal" style="font-family:'Ethnocentric', 'Orbitron', 'Arial Black', Arial, sans-serif; font-size:22px; font-weight:900; letter-spacing:0.5px; color:#16324f; white-space:nowrap;">CIR<span style="color:#2f7fd1;">i</span>S version 2.04</span>
+    <span id="titrePrincipal" style="font-family:'Ethnocentric', 'Orbitron', 'Arial Black', Arial, sans-serif; font-size:22px; font-weight:900; letter-spacing:0.5px; color:#16324f; white-space:nowrap;">CIR<span style="color:#2f7fd1;">i</span>S version 2.05</span>
   </div>
   <div style="font-size:10px;letter-spacing:1.5px;color:#3a2f28;margin:3px 0 1px 2px;font-weight:bold;">Site créé par CALIMOUTOU Brice</div>
   </div>
 
-  <button class="btn-secondaire no-print" onclick="ouvrirOutilSousTitres()" style="margin-left:14px;white-space:nowrap;">🎬 Sous-titres</button>
+  <button id="boutonSousTitresHeader" class="btn-secondaire no-print" onclick="ouvrirOutilSousTitres()" style="margin-left:14px;white-space:nowrap;">🎬 Sous-titres</button>
 
   <div id="widgetCompte" style="margin-left:auto; position:relative; cursor:pointer;" onclick="toggleMenuCompte(event)">
     <div style="display:flex;align-items:center;gap:10px;">
@@ -459,12 +462,12 @@ if('serviceWorker' in navigator){
 <!-- ============ ONGLET SEMAINE ============ -->
 <div id="onglet-semaine" class="cache">
 
-  <div class="carte no-print" id="barreNavSemaine" style="padding:10px 14px; position:sticky; top:var(--hauteur-barre, 142px); z-index:400;">
-    <div class="actions" style="margin:0;">
-      <button class="btn-secondaire" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Remonter en haut de la page">⇧ Haut de page</button>
-      <button class="btn-secondaire" onclick="allerA('ancreVCM')">↳ Programme VCM</button>
-      <button class="btn-secondaire" onclick="allerA('predBloc-rc')">↳ Prédication — Responsable</button>
-      <button class="btn-secondaire" onclick="allerA('predBloc-epouse')">↳ Prédication — Épouse</button>
+  <div class="carte no-print" id="barreNavSemaine" style="padding:8px 10px; position:sticky; top:var(--hauteur-barre, 142px); z-index:400;">
+    <div class="actions" style="margin:0;display:flex;flex-wrap:nowrap;gap:6px;justify-content:space-between;">
+      <button class="btn-secondaire" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Haut de page" style="flex:1;font-size:18px;padding:8px 4px;line-height:1;">⬆️</button>
+      <button class="btn-secondaire" onclick="allerA('ancreVCM')" title="Programme" style="flex:1;font-size:18px;padding:8px 4px;line-height:1;">📅</button>
+      <button class="btn-secondaire" onclick="allerA('predBloc-rc')" title="Prédication responsable" style="flex:1;font-size:18px;padding:8px 4px;line-height:1;">👨🏽</button>
+      <button class="btn-secondaire" onclick="allerA('predBloc-epouse')" title="Prédication sa femme" style="flex:1;font-size:18px;padding:8px 4px;line-height:1;">👩🏻</button>
     </div>
   </div>
 
